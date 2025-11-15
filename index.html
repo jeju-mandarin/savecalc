@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>만능 이자 계산기 (세후)</title>
     <style>
-        /* 기본 스타일 (이전과 동일) */
+        /* CSS 스타일은 이전과 동일합니다. */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex; justify-content: center; align-items: center;
@@ -65,13 +65,9 @@
         }
         .result-row .label { font-weight: 500; color: #555; }
         .result-row .value { font-weight: 600; color: #333; }
-        
-        /* [추가] 세금 항목 스타일 */
         .tax-row .value {
             color: #d9534f; /* 붉은색 */
         }
-
-        /* [수정] 세후 만기 총액을 강조 */
         .result-total {
             border-top: 1px solid #ddd; padding-top: 15px;
             margin-top: 15px; font-size: 1.2rem; font-weight: 700;
@@ -144,13 +140,13 @@
                 <span class="label">총 이자 (세전)</span>
                 <span class="value" id="result-interest-pretax">0 원</span>
             </div>
-            <div class="result-row tax-row">
-                <span class="label">이자 소득세 (15.4%)</span>
-                <span class="value" id="result-tax">0 원</span>
-            </div>
             <div class="result-row">
                 <span class="label">만기 총액 (세전)</span>
                 <span class="value" id="result-total-pretax">0 원</span>
+            </div>
+            <div class="result-row tax-row">
+                <span class="label">이자 소득세 (15.4%)</span>
+                <span class="value" id="result-tax">0 원</span>
             </div>
             <div class="result-row result-total">
                 <span class="label">만기 총액 (세후)</span>
@@ -178,10 +174,10 @@
             }
         });
 
-        // --- [수정] 계산기 로직 ---
+        // --- JavaScript 계산 로직 (이전과 동일) ---
         document.getElementById('calculate-btn').addEventListener('click', function() {
             
-            // 1. 입력 값 가져오기 (이전과 동일)
+            // 1. 입력 값 가져오기
             const calcType = document.getElementById('calc-type').value;
             const monthlyPayment = parseFloat(document.getElementById('monthly-payment').value);
             const lumpSum = parseFloat(document.getElementById('lump-sum').value);
@@ -191,19 +187,19 @@
             // 2. 공통 변수
             const totalMonths = years * 12;
             const monthlyRate = annualRate / 12;
-            const taxRate = 0.154; // [추가] 15.4% 세금
+            const taxRate = 0.154; // 15.4% 세금
 
             let totalPrincipal = 0;
             let totalInterest = 0; // 세전 이자
             let futureValue = 0; // 세전 만기 총액
             let comparisonText = '';
 
-            // 3. 헬퍼 함수 (이전과 동일)
+            // 3. 헬퍼 함수
             function formatToWon(number) {
                 return Math.round(number).toLocaleString('ko-KR') + ' 원';
             }
 
-            // 4. [수정] 모든 케이스에 세금 계산 및 '세후' 비교 로직 추가
+            // 4. 계산 로직 (모든 케이스)
             switch (calcType) {
                 case 'compound-savings': // 1. 복리 적금
                     totalPrincipal = monthlyPayment * totalMonths;
@@ -214,7 +210,7 @@
                     }
                     totalInterest = futureValue - totalPrincipal;
                     
-                    // [수정] 비교 대상 (단리 적금) + 세후 계산
+                    // 비교 대상 (단리 적금) + 세후 계산
                     let simpleInterest_comp = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
                     let simpleSavingsValue_comp = totalPrincipal + simpleInterest_comp;
                     let simpleTax_comp = simpleInterest_comp * taxRate;
@@ -227,7 +223,7 @@
                     totalInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
                     futureValue = totalPrincipal + totalInterest;
                     
-                    // [수정] 비교 대상 (복리 적금) + 세후 계산
+                    // 비교 대상 (복리 적금) + 세후 계산
                     let compoundSavingsValue_comp;
                     if (monthlyRate === 0) {
                         compoundSavingsValue_comp = totalPrincipal;
@@ -245,7 +241,7 @@
                     futureValue = totalPrincipal * Math.pow(1 + monthlyRate, totalMonths);
                     totalInterest = futureValue - totalPrincipal;
 
-                    // [수정] 비교 대상 (단리 예금) + 세후 계산
+                    // 비교 대상 (단리 예금) + 세후 계산
                     let simpleDepositInterest_comp = totalPrincipal * annualRate * years;
                     let simpleDepositValue_comp = totalPrincipal + simpleDepositInterest_comp;
                     let simpleDepositTax_comp = simpleDepositInterest_comp * taxRate;
@@ -258,7 +254,7 @@
                     totalInterest = totalPrincipal * annualRate * years;
                     futureValue = totalPrincipal + totalInterest;
 
-                    // [수정] 비교 대상 (복리 예금) + 세후 계산
+                    // 비교 대상 (복리 예금) + 세후 계산
                     let compoundDepositValue_comp = totalPrincipal * Math.pow(1 + monthlyRate, totalMonths);
                     let compoundDepositInterest_comp = compoundDepositValue_comp - totalPrincipal;
                     let compoundDepositTax_comp = compoundDepositInterest_comp * taxRate;
@@ -267,28 +263,29 @@
                     break;
             }
 
-            // 5. 유효성 검사 (이전과 동일)
+            // 5. 유효성 검사
             if (isNaN(futureValue) || (calcType.includes('savings') && monthlyPayment <= 0) || (calcType.includes('deposit') && lumpSum <= 0)) {
                 alert("유효한 금액과 기간을 입력해주세요.");
                 return;
             }
 
-            // 6. [추가] 최종 세금 및 세후 금액 계산
+            // 6. 최종 세금 및 세후 금액 계산
             const interestTax = Math.max(0, totalInterest * taxRate); // 15.4% 세금
             const afterTaxFutureValue = futureValue - interestTax; // 세후 만기 총액
 
-            // 7. [수정] 결과 값 표시 (DOM 업데이트)
+            // 7. 결과 값 표시 (DOM 업데이트)
+            // (HTML 순서가 변경되었지만, ID는 동일하므로 이 로직은 수정할 필요가 없습니다)
             document.getElementById('result-principal').textContent = formatToWon(totalPrincipal);
             document.getElementById('result-interest-pretax').textContent = formatToWon(totalInterest);
-            document.getElementById('result-tax').textContent = `- ${formatToWon(interestTax)}`; // 세금
-            document.getElementById('result-total-pretax').textContent = formatToWon(futureValue); // 세전 총액
-            document.getElementById('result-total-aftertax').textContent = formatToWon(afterTaxFutureValue); // 세후 총액
+            document.getElementById('result-tax').textContent = `- ${formatToWon(interestTax)}`;
+            document.getElementById('result-total-pretax').textContent = formatToWon(futureValue); 
+            document.getElementById('result-total-aftertax').textContent = formatToWon(afterTaxFutureValue); 
 
-            // 8. 비교 결과 표시 (이전과 동일)
+            // 8. 비교 결과 표시
             document.getElementById('comparison-result').textContent = comparisonText;
             document.getElementById('comparison-result').style.display = 'block';
 
-            // 9. 결과 창 보이기 (이전과 동일)
+            // 9. 결과 창 보이기
             document.getElementById('result-display').style.display = 'block';
         });
     </script>
