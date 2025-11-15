@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>만능 이자 계산기 (적금/예금)</title>
+    <style>
+        /* 기본 스타일 (이전과 유사) */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column; min-height: 100vh;
+            background-color: #f0f4f8; margin: 0; padding: 20px 0;
+        }
+        .container {
+            background-color: #ffffff; padding: 25px 30px; border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); text-align: center;
+            width: 90%; max-width: 400px;
+        }
+        h1 {
+            color: #333; margin-top: 0; margin-bottom: 25px;
+            font-size: 1.5rem; /* 제목 약간 조절 */
+        }
+
+        /* 입력 필드 그룹 스타일 */
+        .input-group {
+            margin-bottom: 15px; text-align: left;
+        }
+        .input-group label {
+            display: block; margin-bottom: 5px;
+            font-weight: 500; color: #555;
+        }
+        .input-field {
+            display: flex; align-items: center;
+        }
+        .input-field input[type="number"],
+        .input-field select { /* [추가] select 태그 스타일 */
+            width: 100%;
+            flex: 1; padding: 12px; border: 1px solid #ddd;
+            border-radius: 5px; font-size: 16px;
+            font-family: inherit;
+            background-color: #fff; /* 아이폰 배경색 강제 */
+            -moz-appearance: textfield;
+        }
+        .input-field input[type="number"]::-webkit-outer-spin-button,
+        .input-field input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        .input-field .unit {
+            margin-left: 10px; font-size: 16px; color: #333;
+        }
+        
+        /* [추가] 처음에는 숨길 입력창 */
+        #lump-sum-group {
+            display: none;
+        }
+
+        /* 계산 버튼 */
+        button {
+            width: 100%; padding: 12px 20px; background-color: #007bff;
+            color: white; border: none; border-radius: 5px;
+            font-size: 16px; font-weight: 500; cursor: pointer;
+            transition: background-color 0.2s; margin-top: 10px;
+        }
+        button:hover { background-color: #0056b3; }
+
+        /* 결과 표시 영역 */
+        #result-display {
+            margin-top: 25px; background-color: #f9f9f9;
+            border: 1px solid #eee; border-radius: 8px;
+            padding: 20px; text-align: left;
+            display: none; /* 처음에는 숨김 */
+        }
+        .result-row {
+            display: flex; justify-content: space-between;
+            align-items: center; font-size: 1rem; margin-bottom: 12px;
+        }
+        .result-row .label { font-weight: 500; color: #555; }
+        .result-row .value { font-weight: 600; color: #333; }
+        .result-total {
+            border-top: 1px solid #ddd; padding-top: 15px;
+            margin-top: 15px; font-size: 1.2rem; font-weight: 700;
+        }
+        .result-total .value { font-size: 1.3rem; color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>💰 만능 이자 계산기</h1>
+        
+        <div class="calculator-form">
+            <div class="input-group">
+                <label for="calc-type">계산 방식</label>
+                <div class="input-field">
+                    <select id="calc-type">
+                        <option value="compound-savings">복리 적금 (월 납입)</option>
+                        <option value="simple-savings">단리 적금 (월 납입)</option>
+                        <option value="compound-deposit">복리 예금 (목돈 예치)</option>
+                        <option value="simple-deposit">단리 예금 (목돈 예치)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group" id="monthly-payment-group">
+                <label for="monthly-payment">월 납입액</label>
+                <div class="input-field">
+                    <input type="number" id="monthly-payment" value="100000" step="10000">
+                    <span class="unit">원</span>
+                </div>
+            </div>
+            
+            <div class="input-group" id="lump-sum-group">
+                <label for="lump-sum">총 예치금 (원금)</label>
+                <div class="input-field">
+                    <input type="number" id="lump-sum" value="10000000" step="100000">
+                    <span class="unit">원</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="annual-rate">연 이자율 (세전)</label>
+                <div class="input-field">
+                    <input type="number" id="annual-rate" value="5" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="years">기간</label>
+                <div class="input-field">
+                    <input type="number" id="years" value="3" step="1" min="1">
+                    <span class="unit">년</span>
+                </div>
+            </div>
+
+            <button id="calculate-btn">계산하기</button>
+        </div>
+
+        <div id="result-display">
+            <div class="result-row">
+                <span class="label">총 원금</span>
+                <span class="value" id="result-principal">0 원</span>
+            </div>
+            <div class="result-row">
+                <span class="label">총 이자 (세전)</span>
+                <span class="value" id="result-interest">0 원</span>
+            </div>
+            <div class="result-row result-total">
+                <span class="label">만기 총액 (세전)</span>
+                <span class="value" id="result-total">0 원</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- [추가] UI 변경 로직 ---
+        const calcTypeSelect = document.getElementById('calc-type');
+        const monthlyGroup = document.getElementById('monthly-payment-group');
+        const lumpSumGroup = document.getElementById('lump-sum-group');
+
+        calcTypeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+
+            if (selectedType.includes('savings')) { // "적금" (savings)
+                monthlyGroup.style.display = 'block';
+                lumpSumGroup.style.display = 'none';
+            } else { // "예금" (deposit)
+                monthlyGroup.style.display = 'none';
+                lumpSumGroup.style.display = 'block';
+            }
+        });
+
+        // --- [수정] 계산기 로직 ---
+        document.getElementById('calculate-btn').addEventListener('click', function() {
+            
+            // 1. 입력 값 가져오기
+            const calcType = document.getElementById('calc-type').value;
+            const monthlyPayment = parseFloat(document.getElementById('monthly-payment').value);
+            const lumpSum = parseFloat(document.getElementById('lump-sum').value);
+            const annualRate = parseFloat(document.getElementById('annual-rate').value) / 100; // 5% -> 0.05
+            const years = parseFloat(document.getElementById('years').value);
+
+            // 2. 공통 변수
+            const totalMonths = years * 12; // 총 개월 수
+            const monthlyRate = annualRate / 12; // 월 이자율
+
+            let totalPrincipal = 0; // 총 원금
+            let totalInterest = 0; // 총 이자
+            let futureValue = 0; // 만기 총액
+
+            // 3. [수정] 선택한 방식에 따라 계산
+            switch (calcType) {
+                case 'compound-savings': // 1. 복리 적금 (월복리)
+                    // 공식: M = P * (( (1+r)^n - 1 ) / r)
+                    futureValue = monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
+                    totalPrincipal = monthlyPayment * totalMonths;
+                    totalInterest = futureValue - totalPrincipal;
+                    break;
+                
+                case 'simple-savings': // 2. 단리 적금 (매월 입금액에 대해 월할 계산)
+                    // 이자 = (P * r / 12) * (n*(n+1)/2)
+                    totalPrincipal = monthlyPayment * totalMonths;
+                    totalInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
+                    futureValue = totalPrincipal + totalInterest;
+                    break;
+                
+                case 'compound-deposit': // 3. 복리 예금 (월복리)
+                    // 공식: M = P * (1+r)^n
+                    totalPrincipal = lumpSum;
+                    futureValue = totalPrincipal * Math.pow(1 + monthlyRate, totalMonths);
+                    totalInterest = futureValue - totalPrincipal;
+                    break;
+
+                case 'simple-deposit': // 4. 단리 예금
+                    // 이자 = P * r * n (n=연)
+                    totalPrincipal = lumpSum;
+                    totalInterest = totalPrincipal * annualRate * years;
+                    futureValue = totalPrincipal + totalInterest;
+                    break;
+            }
+
+            // 4. 유효성 검사 (계산 후)
+            if (isNaN(futureValue) || futureValue <= 0) {
+                alert("유효한 값을 입력해주세요.");
+                return;
+            }
+
+            // 5. 숫자를 '원' 단위로 포맷팅하는 헬퍼 함수
+            function formatToWon(number) {
+                return Math.round(number).toLocaleString('ko-KR') + ' 원';
+            }
+
+            // 6. 결과 값 표시
+            document.getElementById('result-principal').textContent = formatToWon(totalPrincipal);
+            document.getElementById('result-interest').textContent = formatToWon(totalInterest);
+            document.getElementById('result-total').textContent = formatToWon(futureValue);
+
+            // 7. 숨겨뒀던 결과 창 보이기
+            document.getElementById('result-display').style.display = 'block';
+        });
+    </script>
+
+</body>
+</html>
