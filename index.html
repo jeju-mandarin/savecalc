@@ -83,13 +83,40 @@
         .tax-row .value {
             color: #d9534f; /* 붉은색 */
         }
+        .tax-info {
+            font-size: 0.8rem;
+            color: #888;
+        }
         .result-total {
             border-top: 1px solid #ddd; padding-top: 15px;
             margin-top: 15px; font-size: 1.2rem; font-weight: 700;
         }
         .result-total .value {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             color: #007bff; /* 파란색 */
+        }
+        .value-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .return-rate {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #007bff;
+            margin-top: 4px;
+        }
+        .disclaimer-warning {
+            /* display: none; 제거 - JS로 제어하지 않고 항상 보이도록 */
+            margin-top: 30px; 
+            padding: 15px;
+            border: 1px solid #ffc107; 
+            background-color: #fffbe5; 
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #856404;
+            text-align: left;
+            line-height: 1.4;
         }
         .comparison-row {
             text-align: right; margin-top: 10px;
@@ -120,7 +147,7 @@
                 <label for="calc-type">계산 방식</label>
                 <div class="input-field">
                     <select id="calc-type">
-                        <option value="compound-savings">복리 적금 (월 납입)</option>
+                        <option value="compound-savings">복리 적금 (월 납입 / 월 복리)</option>
                         <option value="simple-savings">단리 적금 (월 납입)</option>
                         <option value="compound-deposit">복리 예금 (목돈 예치)</option>
                         <option value="simple-deposit">단리 예금 (목돈 예치)</option>
@@ -172,16 +199,26 @@
                 <span class="value" id="result-total-pretax">0 원</span>
             </div>
             <div class="result-row tax-row">
-                <span class="label">이자 소득세 (15.4%)</span>
+                <span class="label">
+                    이자 소득세 (15.4%)
+                    <div class="tax-info">(총 이자에 대해 만기 시 일괄 과세)</div>
+                </span>
                 <span class="value" id="result-tax">0 원</span>
             </div>
             <div class="result-row result-total">
                 <span class="label">만기 총액 (세후)</span>
-                <span class="value" id="result-total-aftertax">0 원</span>
+                <div class="value-wrapper">
+                    <span class="value" id="result-total-aftertax">0 원</span>
+                    <span class="return-rate" id="return-rate"></span>
+                </div>
             </div>
             <div class="comparison-row" id="comparison-result">
                 </div>
         </div>
+        <div class="disclaimer-warning">
+            ⚠️ <strong>주의사항:</strong> 이 계산기는 단순 참고용이며, 실제 금융 상품의 조건과 다를 수 있습니다. 
+            세금 및 이자 계산은 일반적인 기준에 따라 이루어지며, 개인의 상황에 따라 다를 수 있습니다. 
+            정확한 정보는 금융 기관이나 세무 전문가와 상담하시기 바랍니다.
     </div>
 
     <footer class="site-footer">
@@ -230,11 +267,19 @@
 
             switch (calcType) {
                 case 'compound-savings': 
-                    totalPrincipal = monthlyPayment * totalMonths;
-                    totalInterest = (monthlyRate === 0) ? 0 : 
-                        (monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate)) - totalPrincipal;
-                    
+                    totalPrincipal = monthlyPayment * totalMonths; // 총 원금
+                    let futureValue = 0;
+                    for (let i = 0; i < totalMonths; i++) {
+                        futureValue = (futureValue + monthlyPayment) * (1 + monthlyRate);
+                    }
+                    totalInterest = futureValue - totalPrincipal; // 세전 총 이자
+
                     comparisonType = '단리 적금';
+                    // 비교 대상인 단리 적금 계산은 기존 방식을 유지합니다.
+                    // 월납입액 * 월이율 * (총납입횟수 * (총납입횟수 + 1) / 2)
+                    // 이 공식은 각 납입 원금이 예치되는 기간만큼의 이자를 단리로 계산하여 모두 합산하는 방식입니다.
+                    // 예를 들어 12개월 적금이면, 첫 달 납입금은 12개월치 이자, 두 번째 달 납입금은 11개월치 이자를 받는 식입니다.
+                    // 이 모든 이자를 합산하는 과정을 단순화한 공식입니다.
                     comparisonInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
                     break;
                 
@@ -249,7 +294,7 @@
                 
                 case 'compound-deposit': 
                     totalPrincipal = lumpSum;
-                    totalInterest = (lumpSum * Math.pow(1 + monthlyRate, totalMonths)) - totalPrincipal;
+                    totalInterest = (lumpSum * Math.pow(1 + annualRate, years)) - totalPrincipal;
 
                     comparisonType = '단리 예금';
                     comparisonInterest = totalPrincipal * annualRate * years;
@@ -260,7 +305,7 @@
                     totalInterest = totalPrincipal * annualRate * years;
 
                     comparisonType = '복리 예금';
-                    comparisonInterest = (lumpSum * Math.pow(1 + monthlyRate, totalMonths)) - totalPrincipal;
+                    comparisonInterest = (lumpSum * Math.pow(1 + annualRate, years)) - totalPrincipal;
                     break;
             }
 
@@ -272,16 +317,23 @@
             const interestTax = Math.max(0, totalInterest * taxRate); 
             const afterTaxFutureValue = (totalPrincipal + totalInterest) - interestTax; 
 
-            const comparisonTax = Math.max(0, comparisonInterest * taxRate); 
-            const comparisonAfterTaxValue = (totalPrincipal + comparisonInterest) - comparisonTax; 
+            let comparisonPrincipal = 0;
+            if (calcType.includes('savings')) {
+                comparisonPrincipal = monthlyPayment * totalMonths;
+            } else { // deposit
+                comparisonPrincipal = lumpSum;
+            }
+
+            const comparisonTax = Math.max(0, comparisonInterest * taxRate);
+            const comparisonAfterTaxValue = (comparisonPrincipal + comparisonInterest) - comparisonTax;
             
-            const difference = afterTaxFutureValue - comparisonAfterTaxValue; 
+            const difference = comparisonAfterTaxValue - afterTaxFutureValue; 
 
             let diffText = '';
             if (difference > 0) {
-                diffText = `${formatToWon(difference)} 많음`;
+                diffText = `${formatToWon(difference)} 더 많음`;
             } else if (difference < 0) {
-                diffText = `${formatToWon(Math.abs(difference))} 적음`;
+                diffText = `${formatToWon(Math.abs(difference))} 더 적음`;
             } else {
                 diffText = '차이 없음';
             }
@@ -292,7 +344,15 @@
             document.getElementById('result-interest-pretax').textContent = formatToWon(totalInterest);
             document.getElementById('result-total-pretax').textContent = formatToWon(totalPrincipal + totalInterest);
             document.getElementById('result-tax').textContent = `- ${formatToWon(interestTax)}`;
-            document.getElementById('result-total-aftertax').textContent = formatToWon(afterTaxFutureValue); 
+            document.getElementById('result-total-aftertax').textContent = formatToWon(afterTaxFutureValue);
+
+            let returnRate = 0;
+            if (totalPrincipal > 0) {
+                returnRate = ((afterTaxFutureValue - totalPrincipal) / totalPrincipal) * 100;
+            }
+            const returnRateEl = document.getElementById('return-rate');
+            returnRateEl.textContent = `(총 수익률: ${returnRate.toFixed(2)}%)`;
+            returnRateEl.style.display = 'block';
 
             const comparisonDiv = document.getElementById('comparison-result');
             comparisonDiv.innerHTML = comparisonText; 
