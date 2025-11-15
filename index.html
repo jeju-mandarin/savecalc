@@ -288,8 +288,11 @@
                     totalInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
                     
                     comparisonType = '복리 적금';
-                    comparisonInterest = (monthlyRate === 0) ? 0 :
-                        (monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate)) - totalPrincipal;
+                    let comparisonFutureValue = 0;
+                    for (let i = 0; i < totalMonths; i++) {
+                        comparisonFutureValue = (comparisonFutureValue + monthlyPayment) * (1 + monthlyRate);
+                    }
+                    comparisonInterest = comparisonFutureValue - totalPrincipal;
                     break;
                 
                 case 'compound-deposit': 
