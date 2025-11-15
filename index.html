@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>만능 이자 계산기 (세후)</title>
+    <title>만능 이자 계산기 (세후 비교)</title>
     <style>
         /* CSS 스타일은 이전과 동일합니다. */
         body {
@@ -80,6 +80,7 @@
             text-align: right; margin-top: 10px;
             padding-top: 10px; border-top: 1px dashed #ccc;
             font-size: 0.9rem; color: #777;
+            line-height: 1.4; /* 줄 간격 */
         }
     </style>
 </head>
@@ -174,10 +175,10 @@
             }
         });
 
-        // --- JavaScript 계산 로직 (이전과 동일) ---
+        // --- [수정] 계산기 로직 (차액 계산 추가) ---
         document.getElementById('calculate-btn').addEventListener('click', function() {
             
-            // 1. 입력 값 가져오기
+            // 1. 입력 값 가져오기 (이전과 동일)
             const calcType = document.getElementById('calc-type').value;
             const monthlyPayment = parseFloat(document.getElementById('monthly-payment').value);
             const lumpSum = parseFloat(document.getElementById('lump-sum').value);
@@ -190,102 +191,95 @@
             const taxRate = 0.154; // 15.4% 세금
 
             let totalPrincipal = 0;
-            let totalInterest = 0; // 세전 이자
-            let futureValue = 0; // 세전 만기 총액
-            let comparisonText = '';
+            let totalInterest = 0; // [메인] 세전 이자
+            
+            // [추가] 비교용 변수
+            let comparisonInterest = 0; // [비교] 세전 이자
+            let comparisonType = '';    // [비교] 방식 이름
 
-            // 3. 헬퍼 함수
+            // 3. 헬퍼 함수 (이전과 동일)
             function formatToWon(number) {
                 return Math.round(number).toLocaleString('ko-KR') + ' 원';
             }
 
-            // 4. 계산 로직 (모든 케이스)
+            // 4. [수정] 메인 계산 + 비교 계산 (세전 이자만)
             switch (calcType) {
-                case 'compound-savings': // 1. 복리 적금
+                case 'compound-savings': // 1. 복리 적금 (메인)
                     totalPrincipal = monthlyPayment * totalMonths;
-                    if (monthlyRate === 0) {
-                        futureValue = totalPrincipal;
-                    } else {
-                        futureValue = monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-                    }
-                    totalInterest = futureValue - totalPrincipal;
+                    totalInterest = (monthlyRate === 0) ? 0 : 
+                        (monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate)) - totalPrincipal;
                     
-                    // 비교 대상 (단리 적금) + 세후 계산
-                    let simpleInterest_comp = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
-                    let simpleSavingsValue_comp = totalPrincipal + simpleInterest_comp;
-                    let simpleTax_comp = simpleInterest_comp * taxRate;
-                    let simpleAfterTaxValue_comp = simpleSavingsValue_comp - simpleTax_comp;
-                    comparisonText = `(참고: 단리 적금(세후) ${formatToWon(simpleAfterTaxValue_comp)})`;
+                    comparisonType = '단리 적금';
+                    comparisonInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
                     break;
                 
-                case 'simple-savings': // 2. 단리 적금
+                case 'simple-savings': // 2. 단리 적금 (메인)
                     totalPrincipal = monthlyPayment * totalMonths;
                     totalInterest = monthlyPayment * monthlyRate * (totalMonths * (totalMonths + 1) / 2);
-                    futureValue = totalPrincipal + totalInterest;
                     
-                    // 비교 대상 (복리 적금) + 세후 계산
-                    let compoundSavingsValue_comp;
-                    if (monthlyRate === 0) {
-                        compoundSavingsValue_comp = totalPrincipal;
-                    } else {
-                        compoundSavingsValue_comp = monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate);
-                    }
-                    let compoundInterest_comp = compoundSavingsValue_comp - totalPrincipal;
-                    let compoundTax_comp = compoundInterest_comp * taxRate;
-                    let compoundAfterTaxValue_comp = compoundSavingsValue_comp - compoundTax_comp;
-                    comparisonText = `(참고: 복리 적금(세후) ${formatToWon(compoundAfterTaxValue_comp)})`;
+                    comparisonType = '복리 적금';
+                    comparisonInterest = (monthlyRate === 0) ? 0 :
+                        (monthlyPayment * ((Math.pow(1 + monthlyRate, totalMonths) - 1) / monthlyRate)) - totalPrincipal;
                     break;
                 
-                case 'compound-deposit': // 3. 복리 예금
+                case 'compound-deposit': // 3. 복리 예금 (메인)
                     totalPrincipal = lumpSum;
-                    futureValue = totalPrincipal * Math.pow(1 + monthlyRate, totalMonths);
-                    totalInterest = futureValue - totalPrincipal;
+                    totalInterest = (lumpSum * Math.pow(1 + monthlyRate, totalMonths)) - totalPrincipal;
 
-                    // 비교 대상 (단리 예금) + 세후 계산
-                    let simpleDepositInterest_comp = totalPrincipal * annualRate * years;
-                    let simpleDepositValue_comp = totalPrincipal + simpleDepositInterest_comp;
-                    let simpleDepositTax_comp = simpleDepositInterest_comp * taxRate;
-                    let simpleDepositAfterTaxValue_comp = simpleDepositValue_comp - simpleDepositTax_comp;
-                    comparisonText = `(참고: 단리 예금(세후) ${formatToWon(simpleDepositAfterTaxValue_comp)})`;
+                    comparisonType = '단리 예금';
+                    comparisonInterest = totalPrincipal * annualRate * years;
                     break;
 
-                case 'simple-deposit': // 4. 단리 예금
+                case 'simple-deposit': // 4. 단리 예금 (메인)
                     totalPrincipal = lumpSum;
                     totalInterest = totalPrincipal * annualRate * years;
-                    futureValue = totalPrincipal + totalInterest;
 
-                    // 비교 대상 (복리 예금) + 세후 계산
-                    let compoundDepositValue_comp = totalPrincipal * Math.pow(1 + monthlyRate, totalMonths);
-                    let compoundDepositInterest_comp = compoundDepositValue_comp - totalPrincipal;
-                    let compoundDepositTax_comp = compoundDepositInterest_comp * taxRate;
-                    let compoundDepositAfterTaxValue_comp = compoundDepositValue_comp - compoundDepositTax_comp;
-                    comparisonText = `(참고: 복리 예금(세후) ${formatToWon(compoundDepositAfterTaxValue_comp)})`;
+                    comparisonType = '복리 예금';
+                    comparisonInterest = (lumpSum * Math.pow(1 + monthlyRate, totalMonths)) - totalPrincipal;
                     break;
             }
 
-            // 5. 유효성 검사
-            if (isNaN(futureValue) || (calcType.includes('savings') && monthlyPayment <= 0) || (calcType.includes('deposit') && lumpSum <= 0)) {
+            // 5. 유효성 검사 (이전과 동일)
+            if (isNaN(totalInterest) || (calcType.includes('savings') && monthlyPayment <= 0) || (calcType.includes('deposit') && lumpSum <= 0)) {
                 alert("유효한 금액과 기간을 입력해주세요.");
                 return;
             }
 
-            // 6. 최종 세금 및 세후 금액 계산
-            const interestTax = Math.max(0, totalInterest * taxRate); // 15.4% 세금
-            const afterTaxFutureValue = futureValue - interestTax; // 세후 만기 총액
+            // 6. [수정] 최종 세금 및 세후 금액 계산 (메인 vs 비교)
+            const interestTax = Math.max(0, totalInterest * taxRate); // 1. [메인] 세금
+            const afterTaxFutureValue = (totalPrincipal + totalInterest) - interestTax; // 2. [메인] 세후 총액
 
-            // 7. 결과 값 표시 (DOM 업데이트)
-            // (HTML 순서가 변경되었지만, ID는 동일하므로 이 로직은 수정할 필요가 없습니다)
+            const comparisonTax = Math.max(0, comparisonInterest * taxRate); // 3. [비교] 세금
+            const comparisonAfterTaxValue = (totalPrincipal + comparisonInterest) - comparisonTax; // 4. [비교] 세후 총액
+            
+            const difference = afterTaxFutureValue - comparisonAfterTaxValue; // 5. [차액] 계산
+
+            // 7. [수정] 비교 결과 텍스트 생성
+            let diffText = '';
+            if (difference > 0) {
+                diffText = `${formatToWon(difference)} 많음`;
+            } else if (difference < 0) {
+                diffText = `${formatToWon(Math.abs(difference))} 적음`;
+            } else {
+                diffText = '차이 없음';
+            }
+            // HTML 줄바꿈(<br>)을 추가하여 가독성 확보
+            const comparisonText = `[참고: ${comparisonType}(세후) ${formatToWon(comparisonAfterTaxValue)} (${diffText})]`;
+
+
+            // 8. [수정] 결과 값 표시 (DOM 업데이트)
             document.getElementById('result-principal').textContent = formatToWon(totalPrincipal);
             document.getElementById('result-interest-pretax').textContent = formatToWon(totalInterest);
+            document.getElementById('result-total-pretax').textContent = formatToWon(totalPrincipal + totalInterest);
             document.getElementById('result-tax').textContent = `- ${formatToWon(interestTax)}`;
-            document.getElementById('result-total-pretax').textContent = formatToWon(futureValue); 
             document.getElementById('result-total-aftertax').textContent = formatToWon(afterTaxFutureValue); 
 
-            // 8. 비교 결과 표시
-            document.getElementById('comparison-result').textContent = comparisonText;
-            document.getElementById('comparison-result').style.display = 'block';
+            // 9. [수정] 비교 결과 표시 (innerHTML 사용)
+            const comparisonDiv = document.getElementById('comparison-result');
+            comparisonDiv.innerHTML = comparisonText; // textContent 대신 innerHTML로 <br> 태그 적용
+            comparisonDiv.style.display = 'block';
 
-            // 9. 결과 창 보이기
+            // 10. 결과 창 보이기 (이전과 동일)
             document.getElementById('result-display').style.display = 'block';
         });
     </script>
